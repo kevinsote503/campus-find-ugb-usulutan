@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mis Objetos Reportados - Campus Find</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="../../css/tailwind-compiled.css" />
+    <link rel="stylesheet" href="../../css/animations.css" />
+    <link rel="stylesheet" href="../../css/main.css" />
+  </head>
+  <body class="min-h-screen flex flex-col bg-slate-100/70 text-slate-800 font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+    <header id="app-navbar"></header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 animate-page-enter">
+      <div class="space-y-6 pb-16">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Mis Objetos Reportados
+            </h1>
+            <p class="text-sm text-slate-500">
+              Administra, actualiza o elimina los reportes que has publicado en el Campus Usulután
+            </p>
+          </div>
+          <a
+            href="../reportar/index.html"
+            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors no-underline"
+          >
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Nuevo Reporte</span>
+          </a>
+        </div>
+
+        <div id="mis-reportes-content">
+          <div class="p-12 text-center text-slate-400 text-sm">Cargando tus reportes...</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal nativo para editar un reporte propio -->
+    <dialog id="dialog-editar-reporte" class="cf-dialog" closedby="any" aria-labelledby="editar-reporte-title">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-[92vw] overflow-hidden animate-modal-enter">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <h3 id="editar-reporte-title" class="font-extrabold text-base text-slate-900">Editar Reporte</h3>
+          <button id="btn-cerrar-editar-reporte" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 cursor-pointer">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+        <form id="form-editar-reporte" class="p-5 space-y-4">
+          <input type="hidden" id="edit-rep-id" />
+          <div>
+            <label for="edit-rep-titulo" class="block text-xs font-bold text-slate-700 mb-1">Título *</label>
+            <input id="edit-rep-titulo" type="text" required minlength="4" maxlength="150" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 outline-none focus:border-blue-700" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="edit-rep-estado" class="block text-xs font-bold text-slate-700 mb-1">Estado</label>
+              <select id="edit-rep-estado" class="w-full text-sm p-2 rounded-xl border border-slate-300 bg-white">
+                <option value="1">Perdido</option>
+                <option value="2">Encontrado</option>
+                <option value="3">Recuperado</option>
+              </select>
+            </div>
+            <div>
+              <label for="edit-rep-categoria" class="block text-xs font-bold text-slate-700 mb-1">Categoría</label>
+              <select id="edit-rep-categoria" class="w-full text-sm p-2 rounded-xl border border-slate-300 bg-white"></select>
+            </div>
+          </div>
+          <div>
+            <label for="edit-rep-ubicacion" class="block text-xs font-bold text-slate-700 mb-1">Ubicación</label>
+            <select id="edit-rep-ubicacion" class="w-full text-sm p-2 rounded-xl border border-slate-300 bg-white"></select>
+          </div>
+          <div>
+            <label for="edit-rep-desc" class="block text-xs font-bold text-slate-700 mb-1">Descripción *</label>
+            <textarea id="edit-rep-desc" rows="3" required minlength="10" class="w-full text-sm p-3 rounded-xl border border-slate-300 outline-none focus:border-blue-700"></textarea>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button id="btn-cancelar-editar-reporte" type="button" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Cancelar</button>
+            <button type="submit" class="px-5 py-2 text-xs font-bold text-white bg-blue-700 hover:bg-blue-800 rounded-xl cursor-pointer">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <footer id="app-footer"></footer>
+
+    <script>
+      window.CAMPUS_BASE_PATH = '../..';
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/components/layout.js"></script>
+    <script src="../../js/pages/mis-reportes.js"></script>
+  </body>
+</html>

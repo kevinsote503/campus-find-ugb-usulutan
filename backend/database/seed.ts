@@ -24,8 +24,8 @@ export async function runSeed(force = false) {
 
     // Asegurar columnas de geolocalización (latitud, longitud) en bases de datos preexistentes
     const migracionesGeo = [
-      'ALTER TABLE ubicaciones ADD COLUMN latitud FLOAT DEFAULT 13.3468;',
-      'ALTER TABLE ubicaciones ADD COLUMN longitud FLOAT DEFAULT -88.4205;',
+      'ALTER TABLE ubicaciones ADD COLUMN latitud FLOAT DEFAULT 13.34212;',
+      'ALTER TABLE ubicaciones ADD COLUMN longitud FLOAT DEFAULT -88.41797;',
       'ALTER TABLE objetos ADD COLUMN latitud FLOAT;',
       'ALTER TABLE objetos ADD COLUMN longitud FLOAT;',
     ];
@@ -37,56 +37,57 @@ export async function runSeed(force = false) {
       }
     }
 
-    // Coordenadas reales del Campus Universitario en Usulután (UGB Usulután y alrededores de la ciudad)
+    // Coordenadas reales verificadas de Universidad Gerardo Barrios (UGB) Centro Regional Usulután (Km. 113 Carretera El Litoral: 13.34212, -88.41797)
+    // y Parque Central Raúl Francisco Munguía en el Centro de Usulután (13.34382, -88.43823).
     const coordenadasUsulutan: Record<number, { latitud: number; longitud: number; edificio: string; nombre: string; descripcion: string }> = {
       1: {
-        nombre: 'Biblioteca Central - Sala de Estudio',
-        edificio: 'Edificio B (Campus Usulután)',
-        descripcion: 'Segundo piso, cubículos de lectura y sala de consulta digital en Campus Usulután',
-        latitud: 13.3468,
-        longitud: -88.4205,
+        nombre: 'Biblioteca UGB Usulután',
+        edificio: 'Campus UGB Usulután',
+        descripcion: 'Sala de lectura y consulta académica, Campus Regional UGB Usulután (Km. 113 Carretera El Litoral)',
+        latitud: 13.34218,
+        longitud: -88.41792,
       },
       2: {
-        nombre: 'Cafetería Principal Universitaria',
-        edificio: 'Edificio C (Campus Usulután)',
-        descripcion: 'Área de mesas techadas y zona de alimentos del Campus Usulután',
-        latitud: 13.3462,
-        longitud: -88.4212,
+        nombre: 'Cafetería Universitaria UGB',
+        edificio: 'Campus UGB Usulután',
+        descripcion: 'Área de comedor estudiantil y mesas techadas dentro del Campus UGB Usulután',
+        latitud: 13.34192,
+        longitud: -88.41825,
       },
       3: {
-        nombre: 'Laboratorio de Cómputo 102',
-        edificio: 'Facultad de Ingeniería (Usulután)',
-        descripcion: 'Primer nivel, ala norte de sistemas e informática en Usulután',
-        latitud: 13.3473,
-        longitud: -88.4198,
+        nombre: 'Laboratorio de Cómputo UGB',
+        edificio: 'Área de Informática UGB',
+        descripcion: 'Laboratorios de sistemas y prácticas tecnológicas del Campus Regional UGB Usulután',
+        latitud: 13.34232,
+        longitud: -88.41772,
       },
       4: {
-        nombre: 'Cancha y Complejo Polideportivo',
-        edificio: 'Área Deportiva Usulután',
-        descripcion: 'Gradas principales y cancha multiusos del campus en Usulután',
-        latitud: 13.3456,
-        longitud: -88.4220,
+        nombre: 'Cancha y Zona Deportiva UGB',
+        edificio: 'Campus UGB Usulután',
+        descripcion: 'Cancha multiusos y graderías recreativas del Campus Regional UGB Usulután',
+        latitud: 13.34178,
+        longitud: -88.41768,
       },
       5: {
-        nombre: 'Auditorio Mayor y Rectoría',
-        edificio: 'Edificio Administrativo (Usulután)',
-        descripcion: 'Salón de actos, atención estudiantil y vigilancia central en Usulután',
-        latitud: 13.3470,
-        longitud: -88.4215,
+        nombre: 'Recepción y Caseta de Vigilancia UGB',
+        edificio: 'Acceso Principal UGB',
+        descripcion: 'Entrada principal Km. 113 Carretera El Litoral, atención estudiantil y resguardo de objetos',
+        latitud: 13.34205,
+        longitud: -88.41845,
       },
       6: {
-        nombre: 'Plaza Central Estudiantil / Parque Usulután',
-        edificio: 'Zona Central Usulután',
-        descripcion: 'Área verde, bancas estudiantiles y parada de transporte hacia el centro de Usulután',
-        latitud: 13.3446,
-        longitud: -88.4368,
+        nombre: 'Parque Central Raúl Francisco Munguía',
+        edificio: 'Centro de Usulután',
+        descripcion: 'Plaza principal del centro de Usulután y zona de abordaje de transporte estudiantil',
+        latitud: 13.34382,
+        longitud: -88.43823,
       },
       7: {
-        nombre: 'Edificio de Aulas A3 - Salón 304',
-        edificio: 'Edificio A3 (Campus Usulután)',
-        descripcion: 'Tercer nivel, aulas de ciencias económicas e ingeniería en Usulután',
-        latitud: 13.3465,
-        longitud: -88.4195,
+        nombre: 'Edificio de Aulas UGB',
+        edificio: 'Campus UGB Usulután',
+        descripcion: 'Módulo principal de salones de clases del Campus Regional UGB Usulután',
+        latitud: 13.34238,
+        longitud: -88.41812,
       },
     };
 
@@ -129,14 +130,15 @@ export async function runSeed(force = false) {
         }))
       );
     } else {
-      // Actualizar coordenadas de Usulután en ubicaciones existentes
+      // Actualizar nombre, edificio, descripción y coordenadas reales de UGB Usulután en ubicaciones base
       for (const [idStr, coords] of Object.entries(coordenadasUsulutan)) {
         await Ubicacion.update(
           {
-            latitud: coords.latitud,
-            longitud: coords.longitud,
+            nombre: coords.nombre,
             edificio: coords.edificio,
             descripcion: coords.descripcion,
+            latitud: coords.latitud,
+            longitud: coords.longitud,
           },
           { where: { id: Number(idStr) } }
         );
@@ -224,84 +226,89 @@ export async function runSeed(force = false) {
           id: 1,
           usuario_id: 2, // Valeria
           categoria_id: 1, // Electrónica
-          ubicacion_id: 1, // Biblioteca Central
+          ubicacion_id: 1, // Biblioteca UGB Usulután
           estado_id: 1, // perdido
           titulo: 'Calculadora Texas Instruments TI-84 Plus',
           descripcion: 'Calculadora gráfica color negro con funda protectora gris clara. Tiene una calcomanía de fórmula física en la tapa trasera.',
           fecha_reporte: hace2Dias,
-          latitud: 13.3469,
-          longitud: -88.4204,
+          latitud: 13.34220,
+          longitud: -88.41790,
         },
         {
           id: 2,
           usuario_id: 4, // Marta (Personal)
           categoria_id: 1, // Electrónica
-          ubicacion_id: 3, // Lab Computo 102
+          ubicacion_id: 3, // Laboratorio de Cómputo UGB
           estado_id: 2, // encontrado
           titulo: 'Auriculares Inalámbricos Sony WH-CH520',
           descripcion: 'Auriculares de diadema color azul marino, encontrados sobre el escritorio de la terminal de cómputo número 12.',
           fecha_reporte: hace1Dia,
-          latitud: 13.3474,
-          longitud: -88.4197,
+          latitud: 13.34234,
+          longitud: -88.41770,
         },
         {
           id: 3,
           usuario_id: 2, // Valeria
           categoria_id: 2, // Documentos
-          ubicacion_id: 2, // Cafetería Principal
+          ubicacion_id: 2, // Cafetería Universitaria UGB
           estado_id: 1, // perdido
           titulo: 'Credencial Universitaria y Tarjeta de Transporte',
-          descripcion: 'Portacredencial de acrílico con cinta azul que dice Facultad de Ciencias. A nombre de Valeria M.',
+          descripcion: 'Portacredencial de acrílico con cinta azul de la UGB. A nombre de Valeria M.',
           fecha_reporte: hace3Dias,
-          latitud: 13.3461,
-          longitud: -88.4213,
+          latitud: 13.34194,
+          longitud: -88.41822,
         },
         {
           id: 4,
           usuario_id: 3, // Prof. Carlos
           categoria_id: 3, // Mochilas
-          ubicacion_id: 7, // Aulas 3 Salón 304
+          ubicacion_id: 7, // Edificio de Aulas UGB
           estado_id: 2, // encontrado
           titulo: 'Mochila Jansport Color Verde Oliva',
           descripcion: 'Contiene libreta de apuntes de Cálculo Vectorial y una cartuchera negra con bolígrafos y lápices.',
           fecha_reporte: hace4Horas,
-          latitud: 13.3466,
-          longitud: -88.4194,
+          latitud: 13.34240,
+          longitud: -88.41810,
         },
         {
           id: 5,
           usuario_id: 4, // Marta
           categoria_id: 6, // Llaves
-          ubicacion_id: 6, // Plaza Central
+          ubicacion_id: 6, // Parque Central Raúl Francisco Munguía
           estado_id: 2, // encontrado
           titulo: 'Llavero con 3 llaves y figura metálica de búho',
-          descripcion: 'Llavero metálico hallado en una de las bancas cercanas a la parada estudiantil en Usulután.',
+          descripcion: 'Llavero metálico hallado en una de las bancas del Parque Central Raúl Francisco Munguía en Usulután.',
           fecha_reporte: hace1Dia,
-          latitud: 13.3446,
-          longitud: -88.4368,
+          latitud: 13.34382,
+          longitud: -88.43823,
         },
         {
           id: 6,
           usuario_id: 2, // Valeria
           categoria_id: 7, // Botellas y Termos
-          ubicacion_id: 4, // Gimnasio
+          ubicacion_id: 4, // Cancha y Zona Deportiva UGB
           estado_id: 3, // recuperado
           titulo: 'Termo Hydro Flask 32oz Azul Cielo',
-          descripcion: 'Termo de acero inoxidable con calcomanía de la mascota universitaria en la parte frontal.',
+          descripcion: 'Termo de acero inoxidable con calcomanía universitaria en la parte frontal.',
           fecha_reporte: hace5Dias,
-          latitud: 13.3457,
-          longitud: -88.4219,
+          latitud: 13.34180,
+          longitud: -88.41766,
         },
       ]);
     } else {
-      // Asegurar que objetos existentes tengan coordenadas de su ubicación en Usulután
-      const objetosSinGeo = await Objeto.findAll();
-      for (const obj of objetosSinGeo) {
-        if (!obj.latitud || !obj.longitud) {
+      // Corregir objetos existentes que aún tengan coordenadas desfasadas (>13.345 en zona antigua) o nulas
+      const objetosExistentes = await Objeto.findAll();
+      for (const obj of objetosExistentes) {
+        const esCoordenadaAntiguaDesfasada =
+          obj.latitud != null &&
+          obj.longitud != null &&
+          ((obj.latitud >= 13.3450 && obj.latitud <= 13.3480 && obj.longitud >= -88.4230 && obj.longitud <= -88.4190) ||
+            (Math.abs(obj.latitud - 13.3446) < 0.001 && Math.abs(obj.longitud - -88.4368) < 0.001));
+
+        if (!obj.latitud || !obj.longitud || esCoordenadaAntiguaDesfasada) {
           const baseCoord = coordenadasUsulutan[obj.ubicacion_id] || coordenadasUsulutan[1];
-          // Ligera variación para que no se encimen exactamente en el mismo píxel
-          const offsetLat = ((obj.id % 5) - 2) * 0.00012;
-          const offsetLng = ((obj.id % 3) - 1) * 0.00012;
+          const offsetLat = ((obj.id % 3) - 1) * 0.00004;
+          const offsetLng = ((obj.id % 3) - 1) * 0.00004;
           await Objeto.update(
             {
               latitud: Number((baseCoord.latitud + offsetLat).toFixed(6)),

@@ -13,6 +13,119 @@
   const REGEX_TELEFONO = /^[0-9+\-\s()]{7,20}$/;
 
   let detailMiniMap = null;
+  let deliveryCallback = null;
+  let confirmCallback = null;
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function showToast(mensaje, tipo = 'info') {
+    let container = document.getElementById('cf-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'cf-toast-container';
+      container.setAttribute('aria-live', 'polite');
+      container.setAttribute('aria-atomic', 'true');
+      document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `cf-toast cf-toast-${tipo}`;
+    toast.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+    const icon = tipo === 'success' ? '✅' : tipo === 'error' ? '⚠️' : 'ℹ️';
+    toast.innerHTML = `<span aria-hidden="true">${icon}</span><span>${escapeHtml(mensaje)}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.25s ease';
+      setTimeout(() => toast.remove(), 260);
+    }, 3600);
+  }
+
+  function initFormValidation(root = document) {
+    const supportsUserInvalid = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('selector(:user-invalid)');
+    const dirtyState = new WeakMap();
+
+    const syncField = (el) => {
+      if (!el || !el.matches || !el.matches('input, select, textarea')) return;
+      const isInvalid = supportsUserInvalid
+        ? el.matches(':user-invalid')
+        : Boolean(dirtyState.get(el)?.hasBlurred && !el.validity.valid);
+
+      if (!supportsUserInvalid) {
+        el.classList.toggle('user-invalid-fallback', isInvalid);
+      }
+      el.setAttribute('aria-invalid', isInvalid ? 'true' : 'false');
+
+      const errorId = el.dataset?.error;
+      if (errorId) {
+        const ids = (el.getAttribute('aria-describedby') || '')
+          .split(/\s+/)
+          .filter((id) => id && id !== errorId);
+        if (isInvalid) ids.push(errorId);
+        if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+        else el.removeAttribute('aria-describedby');
+      }
+    };
+
+    root.querySelectorAll('input, select, textarea').forEach((el) => {
+      if (!el.hasAttribute('aria-invalid')) el.setAttribute('aria-invalid', 'false');
+    });
+
+    root.addEventListener(
+      'blur',
+      (e) => {
+        if (!supportsUserInvalid && e.target.matches?.('input, select, textarea')) {
+          const st = dirtyState.get(e.target) || { hasInteracted: false, hasBlurred: false };
+          st.hasBlurred = true;
+          dirtyState.set(e.target, st);
+        }
+        syncField(e.target);
+      },
+      true
+    );
+
+    root.addEventListener('input', (e) => {
+      if (!supportsUserInvalid && e.target.matches?.('input, select, textarea')) {
+        const st = dirtyState.get(e.target) || { hasInteracted: false, hasBlurred: false };
+        st.hasInteracted = true;
+        dirtyState.set(e.target, st);
+      }
+      if (e.target.hasAttribute?.('aria-invalid')) syncField(e.target);
+    });
+
+    root.addEventListener(
+      'invalid',
+      (e) => {
+        if (!supportsUserInvalid) {
+          dirtyState.set(e.target, { hasInteracted: true, hasBlurred: true });
+        }
+        syncField(e.target);
+      },
+      true
+    );
+
+    root.addEventListener(
+      'reset',
+      (e) => {
+        setTimeout(() => {
+          const controls = e.target?.elements || [];
+          for (const el of controls) {
+            dirtyState.delete(el);
+            el.classList?.remove('user-invalid-fallback');
+            syncField(el);
+          }
+        });
+      },
+      true
+    );
+  }
 
   function getBasePath() {
     return window.CAMPUS_BASE_PATH || '.';
@@ -342,21 +455,37 @@
       </div>
 
       <!-- Barra móvil inferior -->
-      <div class="flex md:hidden border-t border-slate-200 bg-slate-50 px-3 py-2 justify-around text-xs font-medium text-slate-600">
+      <div class="flex md:hidden border-t border-slate-200 bg-slate-50 px-2 py-2 justify-around flex-wrap gap-1 text-xs font-medium text-slate-600">
         <a href="${getRouteUrl('inicio')}" class="px-2 py-1 rounded no-underline ${
-      vistaActual === 'inicio' ? 'text-blue-700 font-bold' : 'text-slate-600'
+      vistaActual === 'inicio' ? 'text-blue-700 font-bold bg-blue-50' : 'text-slate-600'
     }">Inicio</a>
         <a href="${getRouteUrl('buscar')}" class="px-2 py-1 rounded no-underline ${
-      vistaActual === 'buscar' ? 'text-blue-700 font-bold' : 'text-slate-600'
+      vistaActual === 'buscar' ? 'text-blue-700 font-bold bg-blue-50' : 'text-slate-600'
     }">Buscar</a>
         <a href="${getRouteUrl('mapa')}" class="px-2 py-1 rounded no-underline ${
-      vistaActual === 'mapa' ? 'text-blue-700 font-bold' : 'text-slate-600'
-    }">Mapa GPS</a>
-        <a href="${getRouteUrl('reportar', 'tipo=perdido')}" class="px-2 py-1 rounded text-rose-700 font-bold no-underline">+ Perdí</a>
+      vistaActual === 'mapa' ? 'text-blue-700 font-bold bg-blue-50' : 'text-slate-600'
+    }">Mapa</a>
+        <a href="${getRouteUrl('reportar', 'tipo=perdido')}" class="px-2 py-1 rounded text-rose-700 font-bold no-underline ${
+      vistaActual === 'reportar' ? 'bg-rose-50' : ''
+    }">+ Reportar</a>
+        ${
+          usuario
+            ? `<a href="${getRouteUrl('mis-reportes')}" class="px-2 py-1 rounded no-underline ${
+                vistaActual === 'mis-reportes' ? 'text-blue-700 font-bold bg-blue-50' : 'text-slate-600'
+              }">Reportes</a>
+               <a href="${getRouteUrl('mis-reclamaciones')}" class="px-2 py-1 rounded no-underline ${
+                vistaActual === 'mis-reclamaciones' ? 'text-blue-700 font-bold bg-blue-50' : 'text-slate-600'
+              }">Reclamos</a>`
+            : ''
+        }
         ${
           esAdmin
-            ? `<a href="${getRouteUrl('admin')}" class="px-2 py-1 rounded text-purple-700 font-bold no-underline">Admin</a>
-               <a href="${getRouteUrl('crud')}" class="px-2 py-1 rounded text-indigo-700 font-bold no-underline">CRUD</a>`
+            ? `<a href="${getRouteUrl('admin')}" class="px-2 py-1 rounded text-purple-700 font-bold no-underline ${
+                vistaActual === 'admin' ? 'bg-purple-50' : ''
+              }">Admin</a>
+               <a href="${getRouteUrl('crud')}" class="px-2 py-1 rounded text-indigo-700 font-bold no-underline ${
+                vistaActual === 'crud' ? 'bg-indigo-50' : ''
+              }">CRUD</a>`
             : ''
         }
       </div>
@@ -468,6 +597,8 @@
   }
 
   function crearObjectCardElement(objeto) {
+    const usuario = getUsuarioActual();
+    const esDuenio = Boolean(usuario && usuario.id === objeto.usuario_id);
     const estadoNombre =
       objeto.estado?.nombre ||
       (objeto.estado_id === 1 ? 'perdido' : objeto.estado_id === 2 ? 'encontrado' : 'recuperado');
@@ -489,35 +620,35 @@
 
           <span class="inline-flex items-center gap-1 text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
             <i data-lucide="${iconName}" class="w-4 h-4"></i>
-            <span class="truncate max-w-[120px]">${objeto.categoria?.nombre || 'General'}</span>
+            <span class="truncate max-w-[120px]">${escapeHtml(objeto.categoria?.nombre || 'General')}</span>
           </span>
         </div>
 
         <h3
           class="btn-card-title font-bold text-base text-slate-900 group-hover:text-blue-700 transition-colors line-clamp-1 cursor-pointer mb-2"
-          title="${objeto.titulo}"
+          title="${escapeHtml(objeto.titulo)}"
         >
-          ${objeto.titulo}
+          ${escapeHtml(objeto.titulo)}
         </h3>
 
         <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-4">
-          ${objeto.descripcion}
+          ${escapeHtml(objeto.descripcion)}
         </p>
 
         <div class="space-y-1.5 text-xs text-slate-500 pt-3 border-t border-slate-100">
           <div class="flex items-center gap-1.5">
             <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
             <span class="truncate font-medium text-slate-700">
-              ${objeto.ubicacion?.nombre || 'Campus Universitario Usulután'}
+              ${escapeHtml(objeto.ubicacion?.nombre || 'Campus Universitario Usulután')}
             </span>
           </div>
           <div class="flex items-center justify-between text-[11px] text-slate-400">
             <span class="truncate">
-              Edificio: <strong class="text-slate-600">${objeto.ubicacion?.edificio || 'Usulután'}</strong>
+              Edificio: <strong class="text-slate-600">${escapeHtml(objeto.ubicacion?.edificio || 'Usulután')}</strong>
             </span>
             <div class="flex items-center gap-1">
               <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
-              <span>${formatearFechaCorta(objeto.fecha_reporte)}</span>
+              <span>${escapeHtml(formatearFechaCorta(objeto.fecha_reporte))}</span>
             </div>
           </div>
         </div>
@@ -534,7 +665,7 @@
         </button>
 
         ${
-          estadoNombre !== 'recuperado'
+          estadoNombre !== 'recuperado' && !esDuenio
             ? `
           <button
             id="btn-reclamar-${objeto.id}"
@@ -544,7 +675,9 @@
             <span>Creo que es mío</span>
           </button>
         `
-            : ''
+            : esDuenio
+            ? `<span class="text-[11px] font-semibold text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-md">Tu reporte</span>`
+            : `<span class="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">✓ Devuelto</span>`
         }
       </div>
     `;
@@ -615,15 +748,18 @@
                 <label for="input-login-correo" class="block text-xs font-bold text-slate-700 mb-1">Correo Institucional</label>
                 <div class="relative">
                   <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                  <input id="input-login-correo" type="email" required placeholder="usuario@campusfind.edu" class="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-700 focus:ring-2 focus:ring-blue-700/20 outline-none" />
+                  <input id="input-login-correo" name="email" type="email" required autocomplete="username" spellcheck="false" enterkeyhint="next" placeholder="usuario@campusfind.edu" class="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-700 focus:ring-2 focus:ring-blue-700/20 outline-none" />
                 </div>
               </div>
 
               <div>
-                <label for="input-login-password" class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+                <div class="flex items-center justify-between mb-1">
+                  <label for="input-login-password" class="block text-xs font-bold text-slate-700">Contraseña</label>
+                  <button id="btn-toggle-login-pass" type="button" class="text-[11px] font-semibold text-blue-700 hover:text-blue-800 cursor-pointer" aria-pressed="false">Mostrar contraseña</button>
+                </div>
                 <div class="relative">
                   <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-                  <input id="input-login-password" type="password" required placeholder="••••••••" class="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-700 focus:ring-2 focus:ring-blue-700/20 outline-none" />
+                  <input id="input-login-password" name="password" type="password" required autocomplete="current-password" enterkeyhint="done" placeholder="••••••••" class="w-full text-sm pl-9 pr-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-700 focus:ring-2 focus:ring-blue-700/20 outline-none" />
                 </div>
               </div>
 
@@ -689,7 +825,7 @@
                   <label for="input-reg-nombre" class="text-xs font-bold text-slate-700">Nombre Completo *</label>
                   <span class="text-[10px] text-slate-400">Solo letras y espacios</span>
                 </div>
-                <input id="input-reg-nombre" type="text" required placeholder="Ej. Valeria Morales" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
+                <input id="input-reg-nombre" name="name" type="text" required autocomplete="name" enterkeyhint="next" placeholder="Ej. Valeria Morales" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
               </div>
 
               <div>
@@ -697,22 +833,22 @@
                   <label for="input-reg-correo" class="text-xs font-bold text-slate-700">Correo Electrónico *</label>
                   <span class="text-[10px] text-slate-400">usuario@dominio.edu</span>
                 </div>
-                <input id="input-reg-correo" type="email" required placeholder="nombre@campusfind.edu" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
+                <input id="input-reg-correo" name="email" type="email" required autocomplete="email" spellcheck="false" enterkeyhint="next" placeholder="nombre@campusfind.edu" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
               </div>
 
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label for="input-reg-password" class="block text-xs font-bold text-slate-700 mb-1">Contraseña *</label>
-                  <input id="input-reg-password" type="password" required minlength="6" placeholder="Mín. 6 caract." class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
+                  <input id="input-reg-password" name="new-password" type="password" required minlength="6" autocomplete="new-password" enterkeyhint="next" placeholder="Mín. 6 caract." class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
                 </div>
                 <div>
                   <label for="input-reg-telefono" class="block text-xs font-bold text-slate-700 mb-1">Teléfono</label>
-                  <input id="input-reg-telefono" type="tel" placeholder="Ej. 555-0199" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
+                  <input id="input-reg-telefono" name="tel" type="tel" autocomplete="tel" enterkeyhint="done" placeholder="Ej. 7788-9900" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 focus:border-blue-700 outline-none" />
                 </div>
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1.5">Rol en la Comunidad Universitaria *</label>
+                <label for="input-reg-rol" class="block text-xs font-bold text-slate-700 mb-1.5">Rol en la Comunidad Universitaria *</label>
                 <select id="input-reg-rol" class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 bg-white outline-none">
                   <option value="1">Estudiante</option>
                   <option value="2">Docente</option>
@@ -866,6 +1002,64 @@
           </form>
         </div>
       </dialog>
+
+      <!-- MODAL 4: ACTA DE ENTREGA OFICIAL (DeliveryModal) -->
+      <dialog id="dialog-entrega-modal" class="cf-dialog" closedby="any" aria-labelledby="entrega-modal-title">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-[92vw] overflow-hidden animate-modal-enter">
+          <div class="p-6 border-b border-slate-100 flex items-start justify-between bg-emerald-50/70">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                <i data-lucide="file-check-2" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 id="entrega-modal-title" class="font-extrabold text-lg text-slate-900">Registrar Acta de Entrega</h3>
+                <p id="entrega-modal-subtitle" class="text-xs text-slate-600 truncate max-w-[280px]"></p>
+              </div>
+            </div>
+            <button id="btn-cerrar-entrega" type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+          <form id="form-entrega-modal" class="p-6 space-y-4">
+            <input type="hidden" id="entrega-reclamacion-id" />
+            <div id="entrega-error-box" style="display:none" class="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"></div>
+            <div>
+              <label for="input-entrega-fecha" class="block text-xs font-bold text-slate-700 mb-1">Fecha de Entrega *</label>
+              <input id="input-entrega-fecha" type="date" required class="w-full text-sm px-3 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none" />
+            </div>
+            <div>
+              <label for="input-entrega-obs" class="block text-xs font-bold text-slate-700 mb-1">Observaciones de Vigilancia *</label>
+              <textarea id="input-entrega-obs" rows="3" required placeholder="Ej. Se verificó carnet estudiantil y coincidencia física del objeto en caseta principal..." class="w-full text-sm p-3 rounded-xl border border-slate-300 focus:border-emerald-600 outline-none"></textarea>
+            </div>
+            <div class="pt-2 flex items-center justify-end gap-3">
+              <button id="btn-cancelar-entrega" type="button" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Cancelar</button>
+              <button id="btn-confirmar-entrega" type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md cursor-pointer">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                <span>Emitir Acta de Entrega</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <!-- MODAL 5: CONFIRMACIÓN NATIVA -->
+      <dialog id="dialog-confirm-modal" class="cf-dialog" closedby="any" aria-labelledby="confirm-modal-title">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-sm w-[90vw] overflow-hidden animate-modal-enter p-6 space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+              <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 id="confirm-modal-title" class="font-extrabold text-base text-slate-900">Confirmar acción</h3>
+              <p id="confirm-modal-message" class="text-xs text-slate-600 mt-1 leading-relaxed"></p>
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button id="btn-cancelar-confirm" type="button" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Cancelar</button>
+            <button id="btn-aceptar-confirm" type="button" class="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl cursor-pointer">Confirmar</button>
+          </div>
+        </div>
+      </dialog>
     `;
 
     document.body.appendChild(root);
@@ -917,6 +1111,17 @@
       const box = document.getElementById('box-credenciales-demo');
       box.style.display = box.style.display === 'none' ? 'block' : 'none';
     });
+
+    const btnTogglePass = document.getElementById('btn-toggle-login-pass');
+    const inputLoginPass = document.getElementById('input-login-password');
+    if (btnTogglePass && inputLoginPass) {
+      btnTogglePass.addEventListener('click', () => {
+        const showing = inputLoginPass.type === 'text';
+        inputLoginPass.type = showing ? 'password' : 'text';
+        btnTogglePass.textContent = showing ? 'Mostrar contraseña' : 'Ocultar contraseña';
+        btnTogglePass.setAttribute('aria-pressed', showing ? 'false' : 'true');
+      });
+    }
 
     document.querySelectorAll('[data-demo-email]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1019,13 +1224,49 @@
       try {
         await window.CampusFindAPI.reclamaciones.crear({ objeto_id, descripcion });
         dlgReclamo.close();
-        window.location.href = getRouteUrl('mis-reclamaciones');
+        showToast('Reclamación enviada correctamente.', 'success');
+        setTimeout(() => {
+          window.location.href = getRouteUrl('mis-reclamaciones');
+        }, 450);
       } catch (err) {
         recErr.textContent = err.message || 'Error al enviar la reclamación.';
         recErr.style.display = 'block';
       }
     });
 
+    // Eventos Entrega Modal
+    const dlgEntrega = document.getElementById('dialog-entrega-modal');
+    document.getElementById('btn-cerrar-entrega').addEventListener('click', () => dlgEntrega.close());
+    document.getElementById('btn-cancelar-entrega').addEventListener('click', () => dlgEntrega.close());
+    document.getElementById('form-entrega-modal').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('entrega-error-box');
+      errEl.style.display = 'none';
+      const reclamacion_id = Number(document.getElementById('entrega-reclamacion-id').value);
+      const fecha = document.getElementById('input-entrega-fecha').value;
+      const observaciones = document.getElementById('input-entrega-obs').value.trim();
+      try {
+        await window.CampusFindAPI.entregas.registrar({ reclamacion_id, fecha, observaciones });
+        dlgEntrega.close();
+        showToast('Acta de entrega emitida correctamente.', 'success');
+        if (typeof deliveryCallback === 'function') deliveryCallback();
+      } catch (err) {
+        errEl.textContent = err.message || 'No se pudo registrar la entrega.';
+        errEl.style.display = 'block';
+      }
+    });
+
+    // Eventos Confirm Modal
+    const dlgConfirm = document.getElementById('dialog-confirm-modal');
+    document.getElementById('btn-cancelar-confirm').addEventListener('click', () => dlgConfirm.close());
+    document.getElementById('btn-aceptar-confirm').addEventListener('click', async () => {
+      dlgConfirm.close();
+      if (typeof confirmCallback === 'function') {
+        await confirmCallback();
+      }
+    });
+
+    initFormValidation(root);
     refreshIcons();
   }
 
@@ -1135,7 +1376,7 @@
         }).addTo(detailMiniMap);
         window.L.marker([coords.lat, coords.lng])
           .addTo(detailMiniMap)
-          .bindPopup(`<strong>${objeto.titulo}</strong><br/><span style="font-size:11px">${objeto.ubicacion?.edificio || 'Campus Usulután'}</span>`)
+          .bindPopup(`<strong>${escapeHtml(objeto.titulo)}</strong><br/><span style="font-size:11px">${escapeHtml(objeto.ubicacion?.edificio || 'Campus Usulután')}</span>`)
           .openPopup();
         detailMiniMap.invalidateSize();
       }, 150);
@@ -1158,7 +1399,34 @@
     refreshIcons();
   }
 
+  function abrirModalEntrega(reclamacion, onSuccess) {
+    ensureGlobalModals();
+    deliveryCallback = onSuccess || null;
+    document.getElementById('entrega-reclamacion-id').value = String(reclamacion.id);
+    document.getElementById('entrega-modal-subtitle').textContent = `${reclamacion.objeto?.titulo || 'Objeto'} — ${reclamacion.usuario?.nombre || 'Solicitante'}`;
+    document.getElementById('input-entrega-fecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('input-entrega-obs').value = 'Entrega verificada en caseta de vigilancia con documento de identidad universitaria.';
+    document.getElementById('entrega-error-box').style.display = 'none';
+    const dlg = document.getElementById('dialog-entrega-modal');
+    dlg.showModal();
+    refreshIcons();
+  }
+
+  function abrirModalConfirmacion({ titulo, mensaje, textoConfirmar = 'Eliminar', onConfirmar }) {
+    ensureGlobalModals();
+    confirmCallback = onConfirmar || null;
+    document.getElementById('confirm-modal-title').textContent = titulo || 'Confirmar acción';
+    document.getElementById('confirm-modal-message').textContent = mensaje || '¿Deseas continuar con esta acción?';
+    document.getElementById('btn-aceptar-confirm').textContent = textoConfirmar;
+    const dlg = document.getElementById('dialog-confirm-modal');
+    dlg.showModal();
+    refreshIcons();
+  }
+
   window.CampusFindLayout = {
+    escapeHtml,
+    showToast,
+    initFormValidation,
     getRouteUrl,
     getUsuarioActual,
     esAdminActual,
@@ -1170,5 +1438,7 @@
     abrirModalAuth,
     abrirModalDetalle,
     abrirModalReclamo,
+    abrirModalEntrega,
+    abrirModalConfirmacion,
   };
 })(window);

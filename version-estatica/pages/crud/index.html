@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Centro CRUD 3FN (Base de Datos) - Campus Find</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="../../css/tailwind-compiled.css" />
+    <link rel="stylesheet" href="../../css/animations.css" />
+    <link rel="stylesheet" href="../../css/main.css" />
+  </head>
+  <body class="min-h-screen flex flex-col bg-slate-100/70 text-slate-800 font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+    <header id="app-navbar"></header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 animate-page-enter">
+      <div class="space-y-6 pb-16">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[11px] font-bold mb-1">
+              <i data-lucide="database" class="w-3.5 h-3.5"></i>
+              <span>SQLite3 + Sequelize ORM • Tercera Forma Normal (3FN)</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Centro CRUD Integral de Base de Datos
+            </h1>
+            <p class="text-sm text-slate-500">
+              Administra ubicaciones GPS de Usulután, categorías, usuarios institucionales e inspecciona el esquema 3FN en vivo
+            </p>
+          </div>
+          <a
+            href="../admin/index.html"
+            class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors no-underline"
+          >
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>Panel Admin</span>
+          </a>
+        </div>
+
+        <div id="crud-root">
+          <div class="p-12 text-center text-slate-400 text-sm">Cargando centro CRUD...</div>
+        </div>
+      </div>
+    </main>
+
+    <footer id="app-footer"></footer>
+
+    <script>
+      window.CAMPUS_BASE_PATH = '../..';
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/components/layout.js"></script>
+    <script src="../../js/pages/crud.js"></script>
+  </body>
+</html>

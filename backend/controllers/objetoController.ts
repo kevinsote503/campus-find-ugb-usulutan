@@ -338,11 +338,11 @@ export async function crearObjeto(req: AuthenticatedRequest, res: Response): Pro
     const latFinal =
       latitud !== undefined && latitud !== null && !isNaN(Number(latitud))
         ? Number(latitud)
-        : ubi.latitud ?? 13.3468;
+        : ubi.latitud ?? 13.34212;
     const lngFinal =
       longitud !== undefined && longitud !== null && !isNaN(Number(longitud))
         ? Number(longitud)
-        : ubi.longitud ?? -88.4205;
+        : ubi.longitud ?? -88.41797;
 
     const nuevoObjeto = await Objeto.create({
       usuario_id: req.user.id,

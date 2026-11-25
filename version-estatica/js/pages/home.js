@@ -6,30 +6,13 @@
 (function () {
   'use strict';
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    window.CampusFindLayout.renderNavbar('inicio');
-    window.CampusFindLayout.renderFooter();
-
-    // Si es administrador, mostrar botón directo al Centro CRUD en el Hero (idéntico a HomePage.tsx)
-    if (window.CampusFindLayout.esAdminActual()) {
-      const heroActions = document.getElementById('hero-actions-container');
-      const btnCrud = document.createElement('a');
-      btnCrud.id = 'btn-ir-crud-hero';
-      btnCrud.href = './pages/crud/index.html';
-      btnCrud.className =
-        'inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 text-sm font-bold shadow-lg transition-all hover:scale-[1.02] no-underline';
-      btnCrud.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4"></i><span>Gestión de Base de Datos (CRUD)</span>`;
-      heroActions.appendChild(btnCrud);
-      window.CampusFindLayout.refreshIcons();
+  async function cargarPortada() {
+    const loadingEl = document.getElementById('home-recent-loading');
+    const gridEl = document.getElementById('home-recent-grid');
+    if (loadingEl) {
+      loadingEl.style.display = 'block';
+      loadingEl.textContent = 'Cargando objetos recientes...';
     }
-
-    // Buscador del Hero
-    document.getElementById('form-buscador-hero').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const texto = document.getElementById('input-buscador-hero').value.trim();
-      const params = texto ? `texto=${encodeURIComponent(texto)}` : '';
-      window.location.href = window.CampusFindLayout.getRouteUrl('buscar', params);
-    });
 
     try {
       const [resObjetos, resCategorias, resStats] = await Promise.all([
@@ -51,7 +34,7 @@
         catContainer.innerHTML = '';
         resCategorias.categorias.forEach((cat) => {
           const btn = document.createElement('a');
-          btn.href = `./pages/buscar/index.html?categoria=${cat.id}`;
+          btn.href = `./pages/buscar/index.html?categoria=${encodeURIComponent(cat.id)}`;
           btn.className =
             'px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 text-xs font-semibold text-slate-700 hover:text-blue-700 shrink-0 transition-all shadow-xs no-underline';
           btn.textContent = cat.nombre;
@@ -59,8 +42,6 @@
         });
       }
 
-      const loadingEl = document.getElementById('home-recent-loading');
-      const gridEl = document.getElementById('home-recent-grid');
       if (loadingEl) loadingEl.style.display = 'none';
 
       if (resObjetos && resObjetos.objetos && resObjetos.objetos.length > 0) {
@@ -74,6 +55,49 @@
       }
     } catch (err) {
       console.error('Error al cargar portada:', err);
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (gridEl) {
+        const msg = window.CampusFindLayout.escapeHtml(err.message || 'No se pudieron cargar los reportes.');
+        gridEl.innerHTML = `
+          <div class="col-span-full p-10 text-center bg-white rounded-2xl border border-rose-200 space-y-3">
+            <p class="text-sm font-bold text-rose-700">Error al conectar con el servidor</p>
+            <p class="text-xs text-slate-500 max-w-md mx-auto">${msg}</p>
+            <button id="btn-retry-home" type="button" class="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold cursor-pointer">
+              Reintentar conexión
+            </button>
+          </div>
+        `;
+        const retryBtn = document.getElementById('btn-retry-home');
+        if (retryBtn) retryBtn.addEventListener('click', cargarPortada);
+      }
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    window.CampusFindLayout.renderNavbar('inicio');
+    window.CampusFindLayout.renderFooter();
+
+    // Si es administrador, mostrar botón directo al Centro CRUD en el Hero
+    if (window.CampusFindLayout.esAdminActual()) {
+      const heroActions = document.getElementById('hero-actions-container');
+      const btnCrud = document.createElement('a');
+      btnCrud.id = 'btn-ir-crud-hero';
+      btnCrud.href = './pages/crud/index.html';
+      btnCrud.className =
+        'inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30 text-sm font-bold shadow-lg transition-all hover:scale-[1.02] no-underline';
+      btnCrud.innerHTML = `<i data-lucide="shield-check" class="w-4 h-4"></i><span>Gestión de Base de Datos (CRUD)</span>`;
+      heroActions.appendChild(btnCrud);
+      window.CampusFindLayout.refreshIcons();
+    }
+
+    // Buscador del Hero
+    document.getElementById('form-buscador-hero').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const texto = document.getElementById('input-buscador-hero').value.trim();
+      const params = texto ? `texto=${encodeURIComponent(texto)}` : '';
+      window.location.href = window.CampusFindLayout.getRouteUrl('buscar', params);
+    });
+
+    cargarPortada();
   });
 })();

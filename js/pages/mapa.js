@@ -20,6 +20,10 @@
   let gpsLayer = null;
   let markerById = {};
 
+  function esc(str) {
+    return window.CampusFindLayout.escapeHtml(str);
+  }
+
   function obtenerFiltrados() {
     const q = (document.getElementById('map-input-texto').value || '').trim().toLowerCase();
     const est = document.getElementById('map-select-estado').value;
@@ -31,8 +35,8 @@
       if (cat !== 'todas' && String(o.categoria_id) !== cat) return false;
       if (ubi !== 'todas' && String(o.ubicacion_id) !== ubi) return false;
       if (q) {
-        const mTit = o.titulo.toLowerCase().includes(q);
-        const mDesc = o.descripcion.toLowerCase().includes(q);
+        const mTit = (o.titulo || '').toLowerCase().includes(q);
+        const mDesc = (o.descripcion || '').toLowerCase().includes(q);
         const mUbi =
           (o.ubicacion?.nombre || '').toLowerCase().includes(q) ||
           (o.ubicacion?.edificio || '').toLowerCase().includes(q);
@@ -45,6 +49,7 @@
   function renderizarPinesYLista() {
     if (!map) return;
 
+    const usuario = window.CampusFindLayout.getUsuarioActual();
     const filtrados = obtenerFiltrados();
     const cPerd = filtrados.filter((o) => o.estado_id === 1).length;
     const cEnc = filtrados.filter((o) => o.estado_id === 2).length;
@@ -55,18 +60,35 @@
     document.getElementById('badge-count-recuperados').textContent = `🔵 Recuperados: ${cRec}`;
     document.getElementById('map-sidebar-count').textContent = `Objetos en el Mapa (${filtrados.length})`;
 
-    // 1. Edificios de Usulután
+    // 1. Zonas oficiales de UGB Usulután y Centro de Usulután
     buildingsLayer.clearLayers();
     if (mostrarEdificios) {
+      // Perímetro oficial del Campus Regional UGB Usulután (Km. 113 Carretera El Litoral)
+      window.L.circle(window.CampusFindGeo.CENTRO_CAMPUS_USULUTAN, {
+        radius: 105,
+        color: '#1d4ed8',
+        weight: 2,
+        dashArray: '6 5',
+        fillColor: '#3b82f6',
+        fillOpacity: 0.09,
+      })
+        .bindPopup(
+          `<strong>🎓 Universidad Gerardo Barrios (UGB)</strong><br/><span style="font-size:11px;color:#475569">Centro Regional Usulután • Km. 113 Carretera El Litoral</span>`
+        )
+        .addTo(buildingsLayer);
+
       ubicaciones.forEach((u) => {
-        const lat = u.latitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lat ?? 13.3468;
-        const lng = u.longitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lng ?? -88.4205;
+        const lat = u.latitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lat ?? 13.34212;
+        const lng = u.longitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lng ?? -88.41797;
+        const esParque = (u.edificio || '').toLowerCase().includes('centro') || (u.nombre || '').toLowerCase().includes('parque');
 
         const icon = window.L.divIcon({
           className: 'custom-building-pin',
           html: `
-            <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(15,23,42,0.9);color:#f8fafc;padding:3px 8px;border-radius:9999px;font-size:10px;font-weight:700;white-space:nowrap;border:1.5px solid #38bdf8;box-shadow:0 2px 6px rgba(0,0,0,0.25);transform:translate(-50%,-100%);">
-              <span>🏫</span><span>${u.edificio}</span>
+            <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(15,23,42,0.92);color:#f8fafc;padding:3px 8px;border-radius:9999px;font-size:10px;font-weight:700;white-space:nowrap;border:1.5px solid ${
+              esParque ? '#f59e0b' : '#38bdf8'
+            };box-shadow:0 2px 6px rgba(0,0,0,0.25);transform:translate(-50%,-100%);">
+              <span>${esParque ? '🏛️' : '🏫'}</span><span>${esc(u.nombre)}</span>
             </div>
           `,
           iconSize: [0, 0],
@@ -74,7 +96,9 @@
 
         window.L.marker([lat, lng], { icon, zIndexOffset: -100 })
           .bindPopup(
-            `<strong>🏫 ${u.nombre}</strong><br/><span style="font-size:11px;color:#475569">${u.edificio}</span><br/><small style="font-family:monospace">GPS: ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}</small>`
+            `<strong>${esParque ? '🏛️' : '🏫'} ${esc(u.nombre)}</strong><br/><span style="font-size:11px;color:#475569">${esc(
+              u.edificio
+            )}</span><br/><small style="font-family:monospace">GPS: ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}</small>`
           )
           .addTo(buildingsLayer);
       });
@@ -98,6 +122,9 @@
 
     filtrados.forEach((obj) => {
       const { lat, lng } = window.CampusFindGeo.obtenerCoordenadasObjeto(obj);
+      const esDuenio = usuario && usuario.id === obj.usuario_id;
+      const puedeReclamar = obj.estado_id !== 3 && !esDuenio;
+
       let bgPin = '#e11d48';
       let emoji = '🔎';
       let labelEstado = 'PERDIDO';
@@ -135,15 +162,19 @@
         <div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <span style="font-size:10px;font-weight:800;color:${bgPin}">${labelEstado}</span>
-            <span style="font-size:10px;color:#64748b">${obj.categoria?.nombre || ''}</span>
+            <span style="font-size:10px;color:#64748b">${esc(obj.categoria?.nombre || '')}</span>
           </div>
-          <div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:4px">${obj.titulo}</div>
-          <div style="font-size:11px;color:#475569;margin-bottom:6px">📍 ${obj.ubicacion?.edificio || 'Usulután'} — ${obj.ubicacion?.nombre || ''}</div>
-          <div style="font-size:10px;font-family:monospace;color:#64748b;margin-bottom:8px">GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}</div>
+          <div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:4px">${esc(obj.titulo)}</div>
+          <div style="font-size:11px;color:#475569;margin-bottom:6px">📍 ${esc(
+            obj.ubicacion?.edificio || 'Usulután'
+          )} — ${esc(obj.ubicacion?.nombre || '')}</div>
+          <div style="font-size:10px;font-family:monospace;color:#64748b;margin-bottom:8px">GPS: ${lat.toFixed(
+            5
+          )}, ${lng.toFixed(5)}</div>
           <div style="display:flex;gap:6px">
             <button type="button" class="btn-pop-detalle" style="flex:1;background:#0f172a;color:#fff;border:none;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">Ver Detalle</button>
             ${
-              obj.estado_id !== 3
+              puedeReclamar
                 ? `<button type="button" class="btn-pop-reclamar" style="flex:1;background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:700;cursor:pointer">Creo que es mío</button>`
                 : ''
             }
@@ -187,8 +218,10 @@
           }">${labelEstado}</span>
           <span class="text-[10px] font-mono text-slate-400">${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
         </div>
-        <h3 class="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">${obj.titulo}</h3>
-        <p class="mt-1 text-[11px] text-slate-600 truncate">📍 ${obj.ubicacion?.edificio} — ${obj.ubicacion?.nombre}</p>
+        <h3 class="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">${esc(obj.titulo)}</h3>
+        <p class="mt-1 text-[11px] text-slate-600 truncate">📍 ${esc(
+          obj.ubicacion?.edificio || 'Usulután'
+        )} — ${esc(obj.ubicacion?.nombre || 'Campus')}</p>
         ${
           distKm !== null
             ? `<div class="mt-1 text-[11px] font-semibold text-blue-700">📏 A ${
@@ -199,8 +232,10 @@
         <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
           <button type="button" class="btn-item-ver text-[11px] font-bold text-slate-700 hover:text-blue-700 cursor-pointer">Ver detalles</button>
           ${
-            obj.estado_id !== 3
+            puedeReclamar
               ? `<button type="button" class="btn-item-rec px-2.5 py-1 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-[11px] font-bold cursor-pointer">Creo que es mío</button>`
+              : esDuenio
+              ? `<span class="text-[10px] font-semibold text-slate-400">Tu reporte</span>`
               : ''
           }
         </div>
@@ -210,6 +245,7 @@
         seleccionadoId = obj.id;
         map.flyTo([lat, lng], 18, { duration: 0.9 });
         setTimeout(() => marker.openPopup(), 350);
+        renderizarPinesYLista();
       });
 
       card.querySelector('.btn-item-ver').addEventListener('click', (e) => {
@@ -234,9 +270,14 @@
 
     // Inicializar mapa Leaflet en Usulután
     const mapContainer = document.getElementById('usulutan-main-map');
+    if (!window.L || !mapContainer) {
+      window.CampusFindLayout.showToast('No se pudo inicializar el motor de mapas Leaflet.', 'error');
+      return;
+    }
+
     map = window.L.map(mapContainer, {
-      center: window.CampusFindGeo.VISTA_GENERAL_USULUTAN,
-      zoom: 15,
+      center: window.CampusFindGeo.CENTRO_CAMPUS_USULUTAN,
+      zoom: 17,
     });
 
     setTimeout(() => {
@@ -251,6 +292,9 @@
     buildingsLayer = window.L.layerGroup().addTo(map);
     markersLayer = window.L.layerGroup().addTo(map);
     gpsLayer = window.L.layerGroup().addTo(map);
+
+    const sidebar = document.getElementById('map-sidebar-items');
+    sidebar.innerHTML = `<div class="p-8 text-center text-xs text-slate-400">Cargando objetos geolocalizados en Usulután...</div>`;
 
     try {
       const [resObj, resCat, resUbi] = await Promise.all([
@@ -281,17 +325,23 @@
       renderizarPinesYLista();
     } catch (err) {
       console.error('Error cargando mapa:', err);
+      sidebar.innerHTML = `
+        <div class="p-6 text-center text-xs text-rose-700 bg-rose-50 rounded-xl border border-rose-200">
+          ${esc(err.message || 'No se pudieron cargar los datos del mapa.')}
+        </div>
+      `;
     }
 
     // Eventos de filtros
-    ['map-input-texto', 'map-select-estado', 'map-select-categoria', 'map-select-ubicacion'].forEach((id) => {
+    document.getElementById('map-input-texto').addEventListener('input', renderizarPinesYLista);
+    ['map-select-estado', 'map-select-categoria', 'map-select-ubicacion'].forEach((id) => {
       const el = document.getElementById(id);
-      el.addEventListener('input', () => {
+      el.addEventListener('change', () => {
         if (id === 'map-select-ubicacion' && el.value !== 'todas') {
           const u = ubicaciones.find((x) => String(x.id) === el.value);
           if (u) {
-            const lat = u.latitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lat ?? 13.3468;
-            const lng = u.longitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lng ?? -88.4205;
+            const lat = u.latitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lat ?? 13.34212;
+            const lng = u.longitud ?? window.CampusFindGeo.USULUTAN_COORDS_FALLBACK[u.id]?.lng ?? -88.41797;
             map.flyTo([lat, lng], 18, { duration: 0.9 });
           }
         }
@@ -310,12 +360,18 @@
       map.flyTo(window.CampusFindGeo.VISTA_GENERAL_USULUTAN, 15, { duration: 1.0 });
     });
 
-    document.getElementById('btn-toggle-edificios').addEventListener('click', () => {
+    const btnEdificios = document.getElementById('btn-toggle-edificios');
+    btnEdificios.addEventListener('click', () => {
       mostrarEdificios = !mostrarEdificios;
+      btnEdificios.textContent = mostrarEdificios ? '🏫 Ocultar Edificios' : '🏫 Mostrar Edificios';
+      btnEdificios.className = mostrarEdificios
+        ? 'px-3 py-1.5 rounded-xl font-semibold border border-slate-200 bg-slate-800 text-white text-xs cursor-pointer'
+        : 'px-3 py-1.5 rounded-xl font-semibold border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs cursor-pointer';
       renderizarPinesYLista();
     });
 
-    document.getElementById('btn-toggle-satelite').addEventListener('click', () => {
+    const btnSatelite = document.getElementById('btn-toggle-satelite');
+    btnSatelite.addEventListener('click', () => {
       map.removeLayer(tileLayer);
       modoSatelite = !modoSatelite;
       if (modoSatelite) {
@@ -323,11 +379,17 @@
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           { attribution: 'Tiles &copy; Esri | Campus Usulután', maxZoom: 19 }
         ).addTo(map);
+        btnSatelite.textContent = '🗺️ Vista de Calles';
+        btnSatelite.className =
+          'px-3 py-1.5 rounded-xl font-semibold border border-blue-200 bg-blue-700 text-white text-xs cursor-pointer';
       } else {
         tileLayer = window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap | Campus Usulután',
           maxZoom: 19,
         }).addTo(map);
+        btnSatelite.textContent = '🛰️ Vista Satelital';
+        btnSatelite.className =
+          'px-3 py-1.5 rounded-xl font-semibold border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs cursor-pointer';
       }
     });
 
@@ -336,7 +398,8 @@
       document.getElementById('map-select-estado').value = 'todos';
       document.getElementById('map-select-categoria').value = 'todas';
       document.getElementById('map-select-ubicacion').value = 'todas';
-      map.flyTo(window.CampusFindGeo.VISTA_GENERAL_USULUTAN, 15, { duration: 0.9 });
+      seleccionadoId = null;
+      map.flyTo(window.CampusFindGeo.CENTRO_CAMPUS_USULUTAN, 17, { duration: 0.9 });
       renderizarPinesYLista();
     });
 
@@ -368,9 +431,9 @@
 
       if (!navigator.geolocation) {
         posicionarEnMapa(
-          13.3466,
-          -88.4208,
-          '📍 Geolocalización establecida en el Campus Universitario de Usulután (13.3466, -88.4208).'
+          13.34212,
+          -88.41797,
+          '📍 Geolocalización establecida en el Campus UGB Usulután (13.34212, -88.41797).'
         );
         return;
       }
@@ -385,9 +448,9 @@
         },
         () => {
           posicionarEnMapa(
-            13.3466,
-            -88.4208,
-            '📍 Geolocalización establecida en el Punto Central del Campus Universitario Usulután (13.3466, -88.4208).'
+            13.34212,
+            -88.41797,
+            '📍 Geolocalización establecida en el Campus Regional UGB Usulután (13.34212, -88.41797).'
           );
         },
         { enableHighAccuracy: true, timeout: 5000 }

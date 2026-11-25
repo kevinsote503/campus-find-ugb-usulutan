@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reportar Objeto con GPS - Campus Find Usulután</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="../../css/tailwind-compiled.css" />
+    <link rel="stylesheet" href="../../css/animations.css" />
+    <link rel="stylesheet" href="../../css/main.css" />
+  </head>
+  <body class="min-h-screen flex flex-col bg-slate-100/70 text-slate-800 font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+    <header id="app-navbar"></header>
+
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 animate-page-enter">
+      <div class="space-y-6 pb-16">
+        <div class="text-center space-y-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+            <span>Registro Geolocalizado • Campus Usulután</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Reportar Objeto Perdido o Encontrado
+          </h1>
+          <p class="text-sm text-slate-500 max-w-xl mx-auto">
+            Completa los detalles del objeto y marca el punto exacto en el mapa de Usulután para facilitar coincidencias y su pronta recuperación.
+          </p>
+        </div>
+
+        <!-- Aviso si no ha iniciado sesión -->
+        <div id="report-auth-banner" style="display:none" class="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center gap-3 text-amber-900 text-xs sm:text-sm">
+            <i data-lucide="lock" class="w-5 h-5 text-amber-700 shrink-0"></i>
+            <span>Debes iniciar sesión con tu cuenta universitaria para publicar un reporte.</span>
+          </div>
+          <button id="btn-report-login" type="button" class="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shrink-0 cursor-pointer">
+            Iniciar Sesión Ahora
+          </button>
+        </div>
+
+        <!-- Selector de tipo de reporte -->
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            id="btn-tipo-perdido"
+            type="button"
+            class="p-4 rounded-2xl border-2 border-rose-500 bg-rose-50 text-rose-800 font-extrabold text-sm flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+          >
+            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+            <span>He Perdido un Objeto</span>
+          </button>
+          <button
+            id="btn-tipo-encontrado"
+            type="button"
+            class="p-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 hover:border-emerald-300 font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+            <span>He Encontrado un Objeto</span>
+          </button>
+        </div>
+
+        <!-- Formulario principal -->
+        <form id="form-reportar-objeto" class="p-6 sm:p-8 bg-white rounded-3xl border border-slate-200 shadow-xs space-y-5">
+          <input type="hidden" id="report-estado-id" value="1" />
+
+          <div id="report-error-box" style="display:none" class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold"></div>
+
+          <div>
+            <label for="report-titulo" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Título del Objeto *
+            </label>
+            <input
+              id="report-titulo"
+              type="text"
+              required
+              minlength="4"
+              maxlength="150"
+              data-error="report-titulo-error"
+              placeholder="Ej. Calculadora científica Casio fx-991EX con funda negra"
+              class="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-700 focus:ring-2 focus:ring-blue-700/20 outline-none"
+            />
+            <div id="report-titulo-error" class="field-error-msg">Ingresa un título descriptivo de al menos 4 caracteres.</div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="report-categoria" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Categoría *
+              </label>
+              <select
+                id="report-categoria"
+                required
+                class="w-full text-sm p-2.5 rounded-xl border border-slate-300 bg-white focus:border-blue-700 outline-none"
+              ></select>
+            </div>
+
+            <div>
+              <label for="report-ubicacion" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Edificio / Zona en Usulután *
+              </label>
+              <select
+                id="report-ubicacion"
+                required
+                class="w-full text-sm p-2.5 rounded-xl border border-slate-300 bg-white focus:border-blue-700 outline-none"
+              ></select>
+            </div>
+          </div>
+
+          <!-- Selector de punto exacto GPS -->
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Punto Exacto en el Mapa (clic o arrastra el pin)
+              </label>
+              <button
+                id="btn-report-mi-gps"
+                type="button"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold cursor-pointer"
+              >
+                <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                <span>Usar mi GPS actual</span>
+              </button>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 overflow-hidden bg-slate-50">
+              <div id="reportar-map"></div>
+              <div class="px-4 py-2.5 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-slate-600">
+                <span>Latitud: <strong id="report-lat-display" class="text-slate-900">13.342120</strong></span>
+                <span>Longitud: <strong id="report-lng-display" class="text-slate-900">-88.417970</strong></span>
+                <span class="text-blue-700 font-sans font-bold">UGB Usulután, SV</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="report-fecha" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Fecha del Suceso *
+            </label>
+            <input
+              id="report-fecha"
+              type="date"
+              required
+              class="w-full sm:w-64 text-sm px-4 py-2.5 rounded-xl border border-slate-300 focus:border-blue-700 outline-none"
+            />
+          </div>
+
+          <div>
+            <label for="report-descripcion" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+              Descripción Detallada *
+            </label>
+            <textarea
+              id="report-descripcion"
+              rows="4"
+              required
+              minlength="10"
+              data-error="report-desc-error"
+              placeholder="Indica color, marca, señas particulares, stickers o contenido que ayuden a identificar el objeto..."
+              class="w-full text-sm p-3.5 rounded-xl border border-slate-300 focus:border-blue-700 focus:ring-2 focus:ring-blue-700/20 outline-none"
+            ></textarea>
+            <div id="report-desc-error" class="field-error-msg">La descripción debe tener al menos 10 caracteres.</div>
+          </div>
+
+          <!-- Caja de coincidencias automáticas -->
+          <div id="report-matching-box" style="display:none" class="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-3">
+            <div class="flex items-center gap-2 text-amber-900 font-extrabold text-xs sm:text-sm">
+              <i data-lucide="sparkles" class="w-4 h-4 text-amber-600"></i>
+              <span>¡Posibles coincidencias detectadas en el campus!</span>
+            </div>
+            <p class="text-xs text-amber-800">
+              Antes de publicar, revisa si alguno de estos reportes recientes corresponde a tu objeto:
+            </p>
+            <div id="report-matching-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+          </div>
+
+          <div class="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3">
+            <a href="../../index.html" class="w-full sm:w-auto text-center px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs sm:text-sm font-semibold text-slate-600 no-underline">
+              Cancelar
+            </a>
+            <button
+              id="btn-submit-reporte"
+              type="submit"
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold shadow-md transition-all cursor-pointer"
+            >
+              <i data-lucide="send" class="w-4 h-4"></i>
+              <span>Publicar Reporte de Objeto Perdido</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <footer id="app-footer"></footer>
+
+    <script>
+      window.CAMPUS_BASE_PATH = '../..';
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="../../js/services/api.js"></script>
+    <script src="../../js/components/layout.js"></script>
+    <script src="../../js/pages/reportar.js"></script>
+  </body>
+</html>

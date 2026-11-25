@@ -1,6 +1,6 @@
 /**
  * @file main.css
- * @description Estilos globales institucionales de Campus Find (Tipografía Plus Jakarta Sans, Scrollbars y Mapas).
+ * @description Estilos globales institucionales de Campus Find (Tipografía Plus Jakarta Sans, Scrollbars, Mapas, Modales y Validación).
  */
 
 body {
@@ -14,6 +14,19 @@ body {
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Utilidad accesible para regiones vivas y lectores de pantalla */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
 }
 
 /* Ajustes para contenedores de mapas Leaflet en Usulután */
@@ -40,10 +53,11 @@ body {
   display: block !important;
 }
 
+#detalle-mini-map-canvas,
 #detail-modal-map {
   width: 100% !important;
-  height: 180px !important;
-  min-height: 180px !important;
+  height: 200px !important;
+  min-height: 192px !important;
   position: relative !important;
   display: block !important;
 }
@@ -54,7 +68,7 @@ body {
   border: 1px solid #e2e8f0;
 }
 
-/* Modales nativos <dialog> centrados con backdrop blur idéntico al diseño original */
+/* Modales nativos <dialog> centrados con contención de scroll moderna */
 dialog.cf-dialog {
   margin: auto;
   padding: 0;
@@ -64,7 +78,76 @@ dialog.cf-dialog {
   max-height: 100vh;
 }
 
+dialog.cf-dialog:modal {
+  overscroll-behavior: contain;
+}
+
 dialog.cf-dialog::backdrop {
   background-color: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(4px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* Validación visual diferida tras interacción (:user-invalid + fallback) */
+:is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) {
+  border-color: #e11d48;
+  background-color: #fff1f2;
+}
+
+:is(input, select, textarea):is(:user-invalid, .user-invalid-fallback) + .field-error-msg {
+  display: block;
+}
+
+.field-error-msg {
+  display: none;
+  color: #be123c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+/* Notificaciones flotantes (Toast) */
+#cf-toast-container {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(92vw, 380px);
+  pointer-events: none;
+}
+
+.cf-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+  border: 1px solid transparent;
+  animation: cfFadeIn 0.22s ease forwards;
+}
+
+.cf-toast-success {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.cf-toast-error {
+  background: #fff1f2;
+  color: #9f1239;
+  border-color: #fecdd3;
+}
+
+.cf-toast-info {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
 }

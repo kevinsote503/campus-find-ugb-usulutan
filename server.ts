@@ -30,6 +30,9 @@ async function startServer() {
 
   // Rutas de la API RESTful (/api/*)
   app.use('/api', apiRoutes);
+  app.use('/api/*', (_req, res) => {
+    res.status(404).json({ success: false, mensaje: 'Endpoint de API no encontrado.' });
+  });
 
   // Servir la aplicación web estática (HTML + CSS + JS puro) desde /version-estatica
   const staticPath = path.join(process.cwd(), 'version-estatica');

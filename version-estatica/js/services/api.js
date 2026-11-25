@@ -7,17 +7,23 @@
 (function (window) {
   'use strict';
 
-  const API_BASE = window.location.port === '3000' ? '/api' : 'http://localhost:3000/api';
+  const isLocalStaticPreview =
+    window.location.protocol === 'file:' ||
+    ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+      window.location.port !== '' &&
+      window.location.port !== '3000');
 
-  // Coordenadas oficiales de referencia en Usulután, El Salvador
+  const API_BASE = isLocalStaticPreview ? 'http://localhost:3000/api' : '/api';
+
+  // Coordenadas reales verificadas de UGB Centro Regional Usulután (Km. 113 Carretera El Litoral) y Centro de Usulután
   const USULUTAN_COORDS_FALLBACK = {
-    1: { lat: 13.3468, lng: -88.4205 }, // Biblioteca Central - Campus Usulután
-    2: { lat: 13.3462, lng: -88.4212 }, // Cafetería Principal - Campus Usulután
-    3: { lat: 13.3473, lng: -88.4198 }, // Lab Cómputo 102 - Facultad Ingeniería Usulután
-    4: { lat: 13.3456, lng: -88.4220 }, // Complejo Polideportivo Usulután
-    5: { lat: 13.3470, lng: -88.4215 }, // Auditorio Mayor y Rectoría Usulután
-    6: { lat: 13.3446, lng: -88.4368 }, // Plaza Central / Centro de Usulután
-    7: { lat: 13.3465, lng: -88.4195 }, // Edificio Aulas A3 - Campus Usulután
+    1: { lat: 13.34218, lng: -88.41792 }, // Biblioteca UGB Usulután
+    2: { lat: 13.34192, lng: -88.41825 }, // Cafetería Universitaria UGB
+    3: { lat: 13.34232, lng: -88.41772 }, // Laboratorio de Cómputo UGB
+    4: { lat: 13.34178, lng: -88.41768 }, // Cancha y Zona Deportiva UGB
+    5: { lat: 13.34205, lng: -88.41845 }, // Recepción y Caseta de Vigilancia UGB
+    6: { lat: 13.34382, lng: -88.43823 }, // Parque Central Raúl Francisco Munguía (Centro Usulután)
+    7: { lat: 13.34238, lng: -88.41812 }, // Edificio de Aulas UGB
   };
 
   async function request(endpoint, options = {}) {
@@ -30,13 +36,22 @@
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch {
+      throw new Error('No se pudo conectar con el servidor de Campus Find. Verifica que el backend esté activo en el puerto 3000.');
+    }
 
     const data = await response.json().catch(() => null);
     if (!response.ok) {
+      if (response.status === 401 && token && !endpoint.startsWith('/auth/login')) {
+        localStorage.removeItem('campus_find_token');
+        localStorage.removeItem('campus_find_user');
+      }
       const errorMsg = data?.mensaje || data?.error || `Error HTTP ${response.status}`;
       throw new Error(errorMsg);
     }
@@ -44,20 +59,20 @@
   }
 
   function obtenerCoordenadasObjeto(obj) {
-    if (obj && obj.latitud && obj.longitud && !isNaN(Number(obj.latitud)) && !isNaN(Number(obj.longitud))) {
+    if (obj && obj.latitud != null && obj.longitud != null && !isNaN(Number(obj.latitud)) && !isNaN(Number(obj.longitud))) {
       return { lat: Number(obj.latitud), lng: Number(obj.longitud) };
     }
-    if (obj && obj.ubicacion && obj.ubicacion.latitud && obj.ubicacion.longitud) {
-      const offsetLat = ((obj.id % 5) - 2) * 0.0001;
-      const offsetLng = ((obj.id % 3) - 1) * 0.0001;
+    if (obj && obj.ubicacion && obj.ubicacion.latitud != null && obj.ubicacion.longitud != null) {
+      const offsetLat = (((obj.id || 1) % 3) - 1) * 0.00003;
+      const offsetLng = (((obj.id || 1) % 3) - 1) * 0.00003;
       return {
         lat: Number(obj.ubicacion.latitud) + offsetLat,
         lng: Number(obj.ubicacion.longitud) + offsetLng,
       };
     }
     const base = USULUTAN_COORDS_FALLBACK[obj?.ubicacion_id] || USULUTAN_COORDS_FALLBACK[1];
-    const offsetLat = (((obj?.id || 1) % 5) - 2) * 0.0001;
-    const offsetLng = (((obj?.id || 1) % 3) - 1) * 0.0001;
+    const offsetLat = (((obj?.id || 1) % 3) - 1) * 0.00003;
+    const offsetLng = (((obj?.id || 1) % 3) - 1) * 0.00003;
     return { lat: base.lat + offsetLat, lng: base.lng + offsetLng };
   }
 
@@ -75,10 +90,10 @@
   }
 
   window.CampusFindGeo = {
+    CENTRO_CAMPUS_USULUTAN: [13.34212, -88.41797],
+    CENTRO_CIUDAD_USULUTAN: [13.34382, -88.43823],
+    VISTA_GENERAL_USULUTAN: [13.3430, -88.4281],
     USULUTAN_COORDS_FALLBACK,
-    CENTRO_CAMPUS_USULUTAN: [13.3466, -88.4208],
-    CENTRO_CIUDAD_USULUTAN: [13.3444, -88.4385],
-    VISTA_GENERAL_USULUTAN: [13.3458, -88.4285],
     obtenerCoordenadasObjeto,
     calcularDistanciaKm,
   };
@@ -96,7 +111,9 @@
       listar: (filtros = {}) => {
         const params = new URLSearchParams();
         if (filtros.texto) params.append('texto', filtros.texto);
-        if (filtros.tipo_usuario_id) params.append('tipo_usuario_id', filtros.tipo_usuario_id);
+        if (filtros.tipo_usuario_id && filtros.tipo_usuario_id !== 'todos') {
+          params.append('tipo_usuario_id', String(filtros.tipo_usuario_id));
+        }
         const qs = params.toString() ? `?${params.toString()}` : '';
         return request(`/usuarios${qs}`);
       },
@@ -111,9 +128,9 @@
       },
       buscar: (filtros = {}) => {
         const params = new URLSearchParams();
-        if (filtros.categoria && filtros.categoria !== 'todas') params.append('categoria', filtros.categoria);
-        if (filtros.ubicacion && filtros.ubicacion !== 'todas') params.append('ubicacion', filtros.ubicacion);
-        if (filtros.estado && filtros.estado !== 'todos') params.append('estado', filtros.estado);
+        if (filtros.categoria && filtros.categoria !== 'todas') params.append('categoria', String(filtros.categoria));
+        if (filtros.ubicacion && filtros.ubicacion !== 'todas') params.append('ubicacion', String(filtros.ubicacion));
+        if (filtros.estado && filtros.estado !== 'todos') params.append('estado', String(filtros.estado));
         if (filtros.texto) params.append('texto', filtros.texto);
         return request(`/objetos/buscar?${params.toString()}`);
       },
@@ -144,7 +161,7 @@
       listar: (filtros = {}) => {
         const params = new URLSearchParams();
         if (filtros.texto) params.append('texto', filtros.texto);
-        if (filtros.edificio) params.append('edificio', filtros.edificio);
+        if (filtros.edificio && filtros.edificio !== 'todos') params.append('edificio', filtros.edificio);
         const qs = params.toString() ? `?${params.toString()}` : '';
         return request(`/ubicaciones${qs}`);
       },
@@ -156,7 +173,9 @@
       listar: (filtros = {}) => {
         const params = new URLSearchParams();
         if (filtros.texto) params.append('texto', filtros.texto);
-        if (filtros.estado_reclamacion_id) params.append('estado_reclamacion_id', filtros.estado_reclamacion_id);
+        if (filtros.estado_reclamacion_id && filtros.estado_reclamacion_id !== 'todos') {
+          params.append('estado_reclamacion_id', String(filtros.estado_reclamacion_id));
+        }
         const qs = params.toString() ? `?${params.toString()}` : '';
         return request(`/reclamaciones${qs}`);
       },
@@ -175,14 +194,5 @@
       obtener: () => request('/stats'),
       esquema: () => request('/stats/esquema'),
     },
-  };
-
-  window.CampusFindGeo = {
-    CENTRO_CAMPUS_USULUTAN: [13.3466, -88.4208],
-    CENTRO_CIUDAD_USULUTAN: [13.3444, -88.4385],
-    VISTA_GENERAL_USULUTAN: [13.3458, -88.4285],
-    USULUTAN_COORDS_FALLBACK,
-    obtenerCoordenadasObjeto,
-    calcularDistanciaKm,
   };
 })(window);

@@ -80,8 +80,8 @@ export async function crearUbicacion(req: Request, res: Response): Promise<void>
       return;
     }
 
-    const latVal = latitud !== undefined && !isNaN(Number(latitud)) ? Number(latitud) : 13.3468;
-    const lngVal = longitud !== undefined && !isNaN(Number(longitud)) ? Number(longitud) : -88.4205;
+    const latVal = latitud !== undefined && !isNaN(Number(latitud)) ? Number(latitud) : 13.34212;
+    const lngVal = longitud !== undefined && !isNaN(Number(longitud)) ? Number(longitud) : -88.41797;
 
     const nuevaUbicacion = await Ubicacion.create({
       nombre: String(nombre).trim(),

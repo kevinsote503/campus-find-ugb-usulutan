@@ -42,6 +42,20 @@
       }
     } catch (err) {
       console.error('Error en búsqueda:', err);
+      if (loadingEl) loadingEl.style.display = 'none';
+      emptyEl.style.display = 'none';
+      const msg = window.CampusFindLayout.escapeHtml(err.message || 'No se pudo consultar el catálogo.');
+      gridEl.innerHTML = `
+        <div class="col-span-full p-10 text-center bg-white rounded-2xl border border-rose-200 space-y-3">
+          <p class="text-sm font-bold text-rose-700">Error al consultar los objetos</p>
+          <p class="text-xs text-slate-500">${msg}</p>
+          <button id="btn-retry-buscar" type="button" class="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold cursor-pointer">
+            Reintentar
+          </button>
+        </div>
+      `;
+      const btnRetry = document.getElementById('btn-retry-buscar');
+      if (btnRetry) btnRetry.addEventListener('click', ejecutarBusqueda);
     }
   }
 
@@ -57,12 +71,17 @@
     window.CampusFindLayout.renderNavbar('buscar');
     window.CampusFindLayout.renderFooter();
 
-    // Leer parámetros iniciales de la URL (?texto=&categoria=)
+    // Leer parámetros iniciales de la URL (?texto=&categoria=&estado=&ubicacion=)
     const urlParams = new URLSearchParams(window.location.search);
     const textoInicial = urlParams.get('texto') || '';
     const catInicial = urlParams.get('categoria') || 'todas';
+    const ubiInicial = urlParams.get('ubicacion') || 'todas';
+    const estInicial = urlParams.get('estado') || 'todos';
 
     document.getElementById('input-buscar-texto').value = textoInicial;
+    if (['1', '2', '3'].includes(estInicial)) {
+      document.getElementById('select-filtro-estado').value = estInicial;
+    }
 
     try {
       const [resCat, resUbi] = await Promise.all([
@@ -88,8 +107,12 @@
         opt.textContent = `${u.edificio} - ${u.nombre}`;
         selUbi.appendChild(opt);
       });
+      if (ubiInicial !== 'todas') {
+        selUbi.value = ubiInicial;
+      }
     } catch (err) {
       console.error('Error cargando filtros:', err);
+      window.CampusFindLayout.showToast('No se pudieron cargar las listas de filtros.', 'error');
     }
 
     ejecutarBusqueda();
