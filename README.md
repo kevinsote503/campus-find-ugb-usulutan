@@ -1,8 +1,3 @@
-Aquí tienes una versión mucho más sólida y profesional, con una sección dedicada al **cumplimiento de las rúbricas de evaluación** para que tu docente vea al instante todo lo que abarca el proyecto:
-
----
-
-```markdown
 # 🎓 Campus Find — Usulután
 ### Sistema Web Integral de Objetos Perdidos y Encontrados con Geolocalización GPS en Tiempo Real
 
@@ -100,4 +95,3 @@ npm run dev
 | 🎓 **Estudiante** | `estudiante@campusfind.edu` | Reportar, buscar, usar mapa GPS y enviar reclamaciones |
 | 👨‍🏫 **Docente** | `docente@campusfind.edu` | Reportar hallazgos/extravíos en aulas y gestionar reportes |
 | 👮 **Personal de Vigilancia** | `personal@campusfind.edu` | Registro y custodia de objetos encontrados en el campus |
-```
